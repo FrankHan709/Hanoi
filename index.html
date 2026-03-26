@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>经典汉诺塔 | 智慧移盘挑战</title>
+    <style>
+        * {
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Roboto', 'Poppins', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 游戏主卡片 */
+        .game-container {
+            background: rgba(30, 20, 15, 0.65);
+            backdrop-filter: blur(4px);
+            border-radius: 68px;
+            padding: 20px 30px 30px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 150, 0.3);
+        }
+
+        .game-panel {
+            background: #fdf8ed;
+            border-radius: 48px;
+            padding: 20px 24px 24px;
+            box-shadow: inset 0 0 0 1px #fff8, 0 12px 28px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 40px;
+            background: #f2e5cf;
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3), inset 0 1px 4px rgba(255, 255, 200, 0.8);
+            cursor: pointer;
+            /* 移除 active 缩放，避免点击闪动 */
+            transition: filter 0.05s ease;
+        }
+        canvas:active {
+            filter: brightness(0.98);
+        }
+
+        /* 控制栏 */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 28px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+
+        .ctrl-group {
+            background: #2c2118;
+            padding: 8px 20px;
+            border-radius: 60px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: inset 0 1px 3px #5e3e2a, 0 5px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .ctrl-group label {
+            color: #ffdfb3;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 1rem;
+            text-shadow: 0 1px 1px black;
+        }
+
+        button {
+            background: #e0b081;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: bold;
+            width: 42px;
+            height: 42px;
+            border-radius: 100px;
+            color: #2a1a0c;
+            cursor: pointer;
+            transition: 0.1s linear;
+            box-shadow: 0 3px 0 #6b3f1c;
+            font-family: monospace;
+            font-weight: 800;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #6b3f1c;
+        }
+        .reset-btn, .auto-clear {
+            background: #d9a066;
+            width: auto;
+            padding: 0 20px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            letter-spacing: 1px;
+        }
+        .reset-btn {
+            background: #c2894f;
+            color: #2f2218;
+        }
+        .disk-count-value {
+            background: #1f140e;
+            color: #f7cf9f;
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+            border-radius: 40px;
+            padding: 4px 12px;
+            font-family: monospace;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            background: #ecd9b4;
+            padding: 10px 24px;
+            border-radius: 60px;
+            margin-top: 12px;
+            font-weight: bold;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .moves-box, .status-box {
+            background: #2d241c;
+            padding: 6px 18px;
+            border-radius: 32px;
+            color: #ffeaaf;
+            font-size: 1.2rem;
+            box-shadow: inset 0 1px 3px #61442e, 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .moves-box span, .status-box span {
+            color: #ffbc6e;
+            font-weight: 800;
+            font-size: 1.4rem;
+            margin-left: 8px;
+        }
+        .status-box {
+            background: #2c3824;
+        }
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 18px;
+            color: #dbc89c;
+            text-shadow: 0 1px 2px black;
+        }
+        @media (max-width: 650px) {
+            .game-container { padding: 12px 16px 20px; }
+            .ctrl-group { padding: 5px 12px; gap: 8px; }
+            button { width: 36px; height: 36px; font-size: 1.2rem; }
+            .stats { flex-direction: column; align-items: center; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-panel">
+        <canvas id="hanoiCanvas" width="800" height="400" style="width:100%; height:auto; max-width:800px; aspect-ratio:800/400"></canvas>
+
+        <div class="controls">
+            <div class="ctrl-group">
+                <label>🏺 盘数</label>
+                <button id="decDisks">−</button>
+                <span id="diskCountDisplay" class="disk-count-value">3</span>
+                <button id="incDisks">+</button>
+            </div>
+            <div class="ctrl-group">
+                <button id="resetGameBtn" class="reset-btn">🔄 重置</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="moves-box">📦 移动步数 <span id="moveCount">0</span></div>
+            <div class="status-box">✨ 状态 <span id="gameStatus">游戏中</span></div>
+        </div>
+        <footer>💡 点击柱子选中 → 再点击另一柱子移动 | 大盘不可压小盘 | 全部移至最右侧获胜</footer>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- DOM 元素 ----------
+        const canvas = document.getElementById('hanoiCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 显示控件
+        const diskCountSpan = document.getElementById('diskCountDisplay');
+        const moveCountSpan = document.getElementById('moveCount');
+        const gameStatusSpan = document.getElementById('gameStatus');
+        const decBtn = document.getElementById('decDisks');
+        const incBtn = document.getElementById('incDisks');
+        const resetBtn = document.getElementById('resetGameBtn');
+
+        // ---------- 游戏配置 ----------
+        let totalDisks = 3;           // 当前盘子数量 (1~7)
+        const MIN_DISKS = 1;          // ✅ 允许 1 个盘子
+        const MAX_DISKS = 7;          // 最多 7 个，保持经典
+
+        // 汉诺塔数据结构: 三个柱子, 每个柱子用数组存储盘子大小(数字), 索引0为底部(最大), 末尾为顶部(最小)
+        let pegs = [[], [], []];
+        let moves = 0;                // 移动计数
+        let gameWon = false;          // 是否胜利
+        let selectedPeg = null;       // 当前选中的柱子索引 0,1,2 或 null
+
+        // 画布尺寸与柱子几何参数 (固定800x400)
+        const CANVAS_W = 800;
+        const CANVAS_H = 400;
+        // 三个柱子中心X坐标
+        const PEG_X = [200, 400, 600];
+        const BASE_Y = 330;           // 柱子底部Y坐标 (盘子堆叠的基准)
+        const PEG_TOP_Y = 110;        // 柱子顶部Y坐标
+        const PEG_WIDTH = 14;          // 柱子粗细
+        const DISK_HEIGHT = 32;        // 每个盘子的高度
+        // 盘子宽度范围 (最小盘子宽度, 最大盘子宽度)
+        const MIN_DISK_W = 42;
+        const MAX_DISK_W = 156;
+
+        // ---------- 辅助函数 ----------
+        // 根据盘子数值(1~totalDisks) 返回宽度 (兼容 totalDisks === 1 的情况)
+        function getDiskWidth(diskValue) {
+            if (totalDisks === 1) {
+                // 只有一个盘子时，使用适中宽度
+                return (MIN_DISK_W + MAX_DISK_W) / 2;
+            }
+            const ratio = (diskValue - 1) / (totalDisks - 1);
+            return MIN_DISK_W + ratio * (MAX_DISK_W - MIN_DISK_W);
+        }
+
+        // 重置游戏 (按照当前 totalDisks 初始化)
+        function initGame() {
+            // 重置三柱
+            pegs = [[], [], []];
+            // 第一柱: 从大到小 (底部最大 = totalDisks, 顶部最小 = 1)
+            for (let i = totalDisks; i >= 1; i--) {
+                pegs[0].push(i);
+            }
+            moves = 0;
+            gameWon = false;
+            selectedPeg = null;
+            updateMoveDisplay();
+            updateStatusDisplay();
+            drawCanvas();
+        }
+
+        // 更新界面步数
+        function updateMoveDisplay() {
+            moveCountSpan.innerText = moves;
+        }
+
+        // 更新胜利/游戏状态文字
+        function updateStatusDisplay() {
+            if (gameWon) {
+                gameStatusSpan.innerText = '🎉 胜利! 🎉';
+                gameStatusSpan.style.color = '#f9d371';
+            } else {
+                gameStatusSpan.innerText = '🎯 游戏中';
+                gameStatusSpan.style.color = '#ffeaaf';
+            }
+        }
+
+        // 检查是否胜利 (所有盘子在第三柱)
+        function checkVictory() {
+            if (!gameWon && pegs[2].length === totalDisks) {
+                gameWon = true;
+                selectedPeg = null;   // 胜利时取消任何选中
+                updateStatusDisplay();
+                drawCanvas();          // 立即重绘并显示胜利特效
+                return true;
+            }
+            return false;
+        }
+
+        // 核心移动逻辑: 从 fromPeg 移动到 toPeg, 返回是否合法移动
+        function tryMove(from, to) {
+            if (from === to) return false;          // 同一个柱子无效
+            const srcPeg = pegs[from];
+            const dstPeg = pegs[to];
+            if (srcPeg.length === 0) return false;  // 源柱无盘子
+
+            const srcDisk = srcPeg[srcPeg.length - 1];  // 顶部盘子
+            if (dstPeg.length > 0) {
+                const dstDisk = dstPeg[dstPeg.length - 1];
+                if (srcDisk > dstDisk) return false;    // 大盘不能放小盘上
+            }
+            // 合法移动
+            const movedDisk = srcPeg.pop();
+            dstPeg.push(movedDisk);
+            moves++;
+            updateMoveDisplay();
+            drawCanvas();
+
+            // 检查胜利
+            const victory = checkVictory();
+            if (victory) {
+                drawCanvas();  // 胜利后重绘一次显示彩蛋氛围
+            }
+            return true;
+        }
+
+        // 处理柱子点击 (游戏核心交互)
+        function handlePegClick(pegIndex) {
+            if (gameWon) {
+                return; // 胜利后不再移动
+            }
+
+            // 情况1: 没有任何柱子被选中
+            if (selectedPeg === null) {
+                // 选中的柱子必须非空才有意义 (如果点击空柱, 不选中)
+                if (pegs[pegIndex].length > 0) {
+                    selectedPeg = pegIndex;
+                    drawCanvas();   // 重绘高亮选中柱子
+                } else {
+                    // 点击空柱子且无选中, 不产生任何效果，也不清除选中（本来就是null）
+                }
+                return;
+            }
+
+            // 情况2: 已有选中的柱子 -> 尝试移动
+            const from = selectedPeg;
+            const to = pegIndex;
+            const success = tryMove(from, to);
+
+            // 无论移动成功与否, 移动后清除选中状态
+            selectedPeg = null;
+            drawCanvas();    // 重绘清除高亮
+
+            // 如果移动非法, 附加视觉反馈: 红框闪烁 (不涉及画面缩放)
+            if (!success && from !== to) {
+                canvas.style.transition = 'box-shadow 0.08s';
+                canvas.style.boxShadow = '0 0 0 3px #e34d4d, 0 12px 20px rgba(0,0,0,0.3)';
+                setTimeout(() => { canvas.style.boxShadow = ''; }, 200);
+            }
+        }
+
+        // 重置全部状态 (保留当前盘子数量)
+        function resetGame() {
+            initGame();
+            drawCanvas();
+        }
+
+        // 改变盘子数量 (delta: +1 / -1)
+        function changeDisks(delta) {
+            let newVal = totalDisks + delta;
+            if (newVal < MIN_DISKS) newVal = MIN_DISKS;
+            if (newVal > MAX_DISKS) newVal = MAX_DISKS;
+            if (newVal === totalDisks) return;
+            totalDisks = newVal;
+            diskCountSpan.innerText = totalDisks;
+            // 重置整个游戏 (新盘子数量)
+            initGame();     // 内部重新构建 pegs
+            drawCanvas();
+        }
+
+        // ---------- 华丽绘图模块 (无任何闪动元素) ----------
+        function drawCanvas() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+            
+            // 1. 木质底座
+            ctx.fillStyle = '#c8aa6e';
+            ctx.beginPath();
+            ctx.rect(0, BASE_Y - 8, CANVAS_W, 48);
+            ctx.fillStyle = '#b87c4f';
+            ctx.fill();
+            ctx.fillStyle = '#9b5e2e';
+            ctx.beginPath();
+            ctx.rect(0, BASE_Y - 4, CANVAS_W, 12);
+            ctx.fill();
+            ctx.fillStyle = '#e7c8a2';
+            ctx.beginPath();
+            ctx.rect(0, BASE_Y + 2, CANVAS_W, 12);
+            ctx.fill();
+            // 木纹细节
+            ctx.strokeStyle = '#794f2b';
+            ctx.lineWidth = 1;
+            for(let i=0;i<12;i++) {
+                ctx.beginPath();
+                ctx.moveTo(20 + i*70, BASE_Y-2);
+                ctx.lineTo(40 + i*70, BASE_Y+6);
+                ctx.stroke();
+            }
+
+            // 2. 绘制三根柱子
+            for (let i = 0; i < 3; i++) {
+                const x = PEG_X[i];
+                const grad = ctx.createLinearGradient(x-8, PEG_TOP_Y, x+8, BASE_Y);
+                grad.addColorStop(0, '#b87a45');
+                grad.addColorStop(1, '#63381c');
+                ctx.fillStyle = grad;
+                ctx.shadowBlur = 3;
+                ctx.shadowColor = "rgba(0,0,0,0.4)";
+                ctx.fillRect(x - PEG_WIDTH/2, PEG_TOP_Y, PEG_WIDTH, BASE_Y - PEG_TOP_Y);
+                ctx.fillStyle = '#eeb76b';
+                ctx.shadowBlur = 2;
+                ctx.beginPath();
+                ctx.ellipse(x, PEG_TOP_Y-4, 12, 7, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#d18f47';
+                ctx.beginPath();
+                ctx.ellipse(x, PEG_TOP_Y-2, 9, 5, 0, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // 3. 绘制盘子 (从底部向上)
+            for (let p = 0; p < 3; p++) {
+                const stack = pegs[p];
+                const pegCenterX = PEG_X[p];
+                const totalDisksOnPeg = stack.length;
+                for (let level = 0; level < totalDisksOnPeg; level++) {
+                    const diskVal = stack[level];
+                    const width = getDiskWidth(diskVal);
+                    const rectX = pegCenterX - width/2;
+                    const yPos = BASE_Y - (level + 1) * DISK_HEIGHT;
+                    
+                    const gradDisk = ctx.createLinearGradient(rectX, yPos, rectX+width, yPos+DISK_HEIGHT);
+                    const hue = 25 + diskVal * 8;
+                    gradDisk.addColorStop(0, `hsl(${hue}, 75%, 65%)`);
+                    gradDisk.addColorStop(1, `hsl(${hue}, 80%, 45%)`);
+                    ctx.fillStyle = gradDisk;
+                    ctx.shadowBlur = 2;
+                    ctx.shadowColor = "rgba(0,0,0,0.3)";
+                    ctx.beginPath();
+                    ctx.roundRect(rectX, yPos, width, DISK_HEIGHT-2, 12);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffd58c';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.roundRect(rectX, yPos, width, DISK_HEIGHT-2, 12);
+                    ctx.stroke();
+                    // 盘子中央数字
+                    ctx.font = `bold ${Math.floor(DISK_HEIGHT * 0.55)}px "Segoe UI", "JetBrains Mono"`;
+                    ctx.fillStyle = '#2c1c0c';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(`${diskVal}`, pegCenterX - 7, yPos + DISK_HEIGHT - 10);
+                    ctx.fillStyle = '#fff2cf';
+                    ctx.fillText(`${diskVal}`, pegCenterX - 8, yPos + DISK_HEIGHT - 11);
+                }
+            }
+
+            // 4. 选中柱高亮 (纯色光环，无动画循环，避免闪动)
+            if (selectedPeg !== null && !gameWon) {
+                const highlightX = PEG_X[selectedPeg];
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(highlightX, PEG_TOP_Y - 12, 26, 0, Math.PI*2);
+                ctx.fillStyle = '#ffd966aa';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(highlightX, PEG_TOP_Y - 12, 18, 0, Math.PI*2);
+                ctx.fillStyle = '#ffb347dd';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(highlightX, PEG_TOP_Y - 12, 32, 0, Math.PI*2);
+                ctx.fillStyle = '#ffb34733';
+                ctx.fill();
+                for(let s=0;s<3;s++){
+                    ctx.fillStyle = '#f5bc70';
+                    ctx.beginPath();
+                    ctx.arc(highlightX + (s-1)*8, PEG_TOP_Y - 20, 4, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+
+            // 5. 胜利特效 (仅静态光点，无持续动画刷新，仅在胜利时绘制一次)
+            if (gameWon) {
+                for (let i = 0; i < 12; i++) {
+                    const t = Date.now() / 500 + i;
+                    const xOff = 40 + i * 70 + Math.sin(t) * 6;
+                    const yOff = 70 + Math.cos(t*1.3) * 12;
+                    ctx.fillStyle = `hsl(${45 + i*20}, 80%, 65%)`;
+                    ctx.beginPath();
+                    ctx.arc(xOff, yOff, 5, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = `hsl(${30 + i*30}, 85%, 60%)`;
+                    ctx.beginPath();
+                    ctx.arc(xOff-3, yOff-2, 3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.font = "bold 36px 'Segoe UI', system-ui";
+                ctx.fillStyle = "#f5bc70cc";
+                ctx.shadowBlur = 0;
+                ctx.fillText("✨ VICTORY ✨", CANVAS_W/2-130, 60);
+            }
+
+            // 柱子铭牌
+            ctx.font = "bold 16px 'Segoe UI'";
+            ctx.fillStyle = "#553b1f";
+            ctx.fillText("① 左柱", PEG_X[0]-35, BASE_Y+18);
+            ctx.fillStyle = "#4f3a22";
+            ctx.fillText("② 中柱", PEG_X[1]-35, BASE_Y+18);
+            ctx.fillStyle = "#4f3a22";
+            ctx.fillText("③ 右柱(目标)", PEG_X[2]-45, BASE_Y+18);
+        }
+
+        // roundRect 工具方法
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.moveTo(x+r, y);
+                this.lineTo(x+w-r, y);
+                this.quadraticCurveTo(x+w, y, x+w, y+r);
+                this.lineTo(x+w, y+h-r);
+                this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+                this.lineTo(x+r, y+h);
+                this.quadraticCurveTo(x, y+h, x, y+h-r);
+                this.lineTo(x, y+r);
+                this.quadraticCurveTo(x, y, x+r, y);
+                return this;
+            };
+        }
+
+        // ---------- 鼠标/触摸交互: 转换canvas坐标到柱子索引 ----------
+        function getPegIndexFromClick(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            canvasX = Math.min(Math.max(0, canvasX), CANVAS_W);
+            canvasY = Math.min(Math.max(0, canvasY), CANVAS_H);
+            
+            let minDist = 75;
+            let hitIndex = -1;
+            for (let i = 0; i < PEG_X.length; i++) {
+                const dx = Math.abs(canvasX - PEG_X[i]);
+                if (dx < minDist && canvasY >= PEG_TOP_Y - 20 && canvasY <= BASE_Y + 25) {
+                    minDist = dx;
+                    hitIndex = i;
+                }
+            }
+            if (hitIndex === -1 && canvasY > PEG_TOP_Y-30 && canvasY < BASE_Y+30) {
+                for (let i=0;i<PEG_X.length;i++) {
+                    if (Math.abs(canvasX - PEG_X[i]) < 55) hitIndex = i;
+                }
+            }
+            return hitIndex;
+        }
+
+        // canvas 点击事件 (统一处理)
+        function onCanvasClick(e) {
+            if (gameWon) {
+                // 胜利后轻量提示，无缩放闪动
+                canvas.style.transition = '0.1s';
+                canvas.style.filter = 'drop-shadow(0 0 4px gold)';
+                setTimeout(()=> canvas.style.filter = '', 300);
+                return;
+            }
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const pegIdx = getPegIndexFromClick(clientX, clientY);
+            if (pegIdx !== -1) {
+                handlePegClick(pegIdx);
+            } else {
+                // 点击空白区域取消选中
+                if (selectedPeg !== null) {
+                    selectedPeg = null;
+                    drawCanvas();
+                }
+            }
+        }
+
+        canvas.addEventListener('click', onCanvasClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const pegIdx = getPegIndexFromClick(touch.clientX, touch.clientY);
+            if (pegIdx !== -1) {
+                handlePegClick(pegIdx);
+            } else if (selectedPeg !== null) {
+                selectedPeg = null;
+                drawCanvas();
+            }
+        }, { passive: false });
+
+        // 按钮事件
+        decBtn.addEventListener('click', () => changeDisks(-1));
+        incBtn.addEventListener('click', () => changeDisks(1));
+        resetBtn.addEventListener('click', () => resetGame());
+
+        // 键盘 R 重置
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                resetGame();
+            }
+        });
+
+        // 初始化
+        initGame();
+        drawCanvas();
+
+        // 窗口重绘
+        window.addEventListener('resize', () => drawCanvas());
+    })();
+</script>
+</body>
+</html>
